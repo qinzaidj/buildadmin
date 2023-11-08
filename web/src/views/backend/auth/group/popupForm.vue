@@ -57,6 +57,7 @@
                             node-key="id"
                             :props="{ children: 'children', label: 'title', class: treeNodeClass }"
                             :data="state.menuRules"
+                            :check-strictly="state.checkstrictly"
                         />
                     </el-form-item>
                     <FormItem
@@ -80,7 +81,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, watch, inject } from 'vue'
+import { reactive, ref, watch, inject, watchEffect, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type baTableClass from '/@/utils/baTable'
 import FormItem from '/@/components/formItem/index.vue'
@@ -90,7 +91,6 @@ import { uuid } from '/@/utils/random'
 import { buildValidatorData } from '/@/utils/validate'
 import type Node from 'element-plus/es/components/tree/src/model/node'
 import { useConfig } from '/@/stores/config'
-
 interface MenuRules {
     id: number
     title: string
@@ -108,10 +108,12 @@ const state: {
     treeKey: string
     defaultCheckedKeys: number[]
     menuRules: MenuRules[]
+    checkstrictly: boolean
 } = reactive({
     treeKey: uuid(),
     defaultCheckedKeys: [],
     menuRules: [],
+    checkstrictly: true,//用于绑定el-tree组件的check-strictly属性，true禁用联级选择
 })
 
 const rules: Partial<Record<string, FormItemRule[]>> = reactive({
@@ -178,7 +180,16 @@ watch(
                 }
                 state.defaultCheckedKeys = arr
             } else {
+                state.checkstrictly = true//渲染前禁用联级选择
                 state.defaultCheckedKeys = baTable.form.items!.rules
+
+                watchEffect(() => {
+                    if (treeRef.value) {
+                        nextTick(() => {
+                            state.checkstrictly = false//渲染完成后 恢复联级选择 方便用户交互 快速选择
+                        })
+                    }
+                })
             }
         } else {
             state.defaultCheckedKeys = []
@@ -186,6 +197,8 @@ watch(
         state.treeKey = uuid()
     }
 )
+
+
 </script>
 
 <style scoped lang="scss">
